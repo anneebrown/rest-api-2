@@ -3,6 +3,13 @@
 // load modules
 const express = require('express');
 const morgan = require('morgan');
+const models = require('./models');
+const {User, Course} = models;
+
+
+//FROM STACKOVERFLOW https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
+var bodyParser = require('body-parser')
+
 
 // variable to enable global error logging
 const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
@@ -10,8 +17,19 @@ const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'tr
 // create the Express app
 const app = express();
 
+//FROM STACKOVERFLOW https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
+// create application/json parser
+var jsonParser = bodyParser.json()
+
+//FROM STACKOVERFLOW https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
+// create application/x-www-form-urlencoded parser
+var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
 // setup morgan which gives us http request logging
 app.use(morgan('dev'));
+
+//uses the stackoverflow thing
+app.use(jsonParser);
 
 // TODO setup your api routes here
 
@@ -21,6 +39,21 @@ app.get('/', (req, res) => {
     message: 'Welcome to the REST API project!',
   });
 });
+
+//post route to create a user
+//urlencondedParser is from stackoverflow: https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
+app.post('/api/users', urlencodedParser, async (req, res) => {
+  await console.log(req.body);
+  //let newUser; 
+  try {
+    //console.log(req.body);
+    await User.create(req.body);
+    res.status(201).end();
+  } catch (error) {
+      throw error;
+     }  
+  }
+);
 
 // send 404 if no other route matched
 app.use((req, res) => {
