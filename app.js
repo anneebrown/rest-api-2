@@ -5,7 +5,8 @@ const express = require('express');
 const morgan = require('morgan');
 const models = require('./models');
 const {User, Course} = models;
-
+const auth = require('basic-auth');
+const bcryptjs = require('bcryptjs');
 
 //FROM STACKOVERFLOW https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
 var bodyParser = require('body-parser')
@@ -33,12 +34,65 @@ app.use(jsonParser);
 
 // TODO setup your api routes here
 
+//set up authentication middleware 
+const authenticateUser = async (req, res, next) => {
+  const credentials = auth(req);
+  console.log(credentials);
+  if (credentials) {
+    const user = await User.findAll({
+      where: {
+        emailAddress: credentials.name
+      }
+    });
+   await console.log(user);
+    if (user) {
+      const authenticated = bcryptjs
+        .compareSync(credentials.pass, user.password);
+      if (authenticated) {
+        req.currentUser = user;
+      } else {
+        message = `Authentication failure for username: ${user.username}`;
+    } 
+  } else {
+    message = 'Auth header not found';
+  }
+  }
+  if (message) {
+    console.warn(message);
+
+    // Return a response with a 401 Unauthorized HTTP status code.
+    res.status(401).json({ message: 'Access Denied' });
+  } else {
+  next();
+  }
+};
+
 // setup a friendly greeting for the root route
 app.get('/', (req, res) => {
   res.json({
     message: 'Welcome to the REST API project!',
   });
 });
+
+//get route to get the current user
+app.get('/api/users', authenticateUser, async (req, res) => {
+  const user = await req.currentUser;
+  //console.log(user);
+  res.json({
+    name: user.name,
+    username: user.username,
+  });
+})
+
+// app.get('/api/users', async (req, res) => {
+//   console.log(req.body)
+
+//   //console.log(user);
+//   // res.json({
+//   //   email: user.name,
+//   //   name: user.username
+//   // });
+// })
 
 //post route to create a user
 //urlencondedParser is from stackoverflow: https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
