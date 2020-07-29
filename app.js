@@ -98,6 +98,7 @@ app.post('/api/users', urlencodedParser, async (req, res) => {
   try {
     //console.log(req.body);
     await User.create(user);
+    res.location('/');
     res.status(201).end();
   } catch (error) {
       if(error.name === "SequelizeValidationError") {
@@ -118,22 +119,95 @@ app.get('/api/courses', async (req, res) => {
   res.json({
     courses
   });
+  res.status(200).end();
 })
 
 //get route to retrieve a specific course, based on the course id: /api/courses/:id
 app.get('/api/courses/:id', async (req, res) => {
   let course = await Course.findByPk(req.params.id);
-  console.log(course);
-  res.json({
-    course
-  });
+  if(course){
+    res.json({
+      course
+    });
+    res.status(200).end();
+  } else {
+    res.status(404).end();
+  }
 })
 
 //post route to create a new course, set the location header for the new course, returns no content: /api/courses 
+app.post('/api/courses', authenticateUser, async (req, res) => {
+  let course;
+  let user = await req.currentUser; 
+  //console.log(user[0].dataValues.id );
+  //console.log(req.body.userId);
+  if (user[0].dataValues.id === req.body.userId) {
+    try {
+      course = await Course.create(req.body);
+      //console.log(req.body);
+      res.location('/api/courses/' + course.id);
+      res.status(201).end();
+    } catch (error) {
+      if(error.name === "SequelizeValidationError") {
+        res.status(400).send(error);
+      } else {
+        throw error;
+      }
+    }
+ } else {
+   res.status(401).end();
+ }
+});
 
 //put route to update a course: /api/courses/:id 
+app.put('/api/courses/:id', authenticateUser, async (req, res) => {
+  let course;
+  let user = await req.currentUser; 
+  if (user[0].dataValues.id === req.body.userId) {
+    try {
+      course = await Course.findByPk(req.params.id);
+      if(course) {
+        course = course.update(req.body);
+        res.status(204).end();
+      } else {
+        res.status(404);
+      }
+    } catch (error) {
+      if(error.name === "SequelizeValidationError") {
+        res.status(400).send(error);
+      } else {
+        throw error;
+      }
+    }
+  } else {
+    res.status(401).end();
+  }
+});
 
 //delete route to delete a course: /api/courses/:id
+app.delete('/api/courses/:id', authenticateUser, async (req, res) => {
+  let course;
+  let user = await req.currentUser; 
+  if (user[0].dataValues.id === req.body.userId) {
+    try {
+      course = await Course.findByPk(req.params.id);
+      if(course) {
+        course = course.destroy(req.body);
+        res.status(204).end();
+      } else {
+        res.status(404);
+      }
+    } catch (error) {
+      if(error.name === "SequelizeValidationError") {
+        res.status(400).send(error);
+      } else {
+        throw error;
+      }
+    }
+  } else {
+    res.status(401).end();
+  } 
+});
 
 //* error handling, etc *//
 
