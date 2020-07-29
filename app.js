@@ -38,33 +38,35 @@ app.use(jsonParser);
 const authenticateUser = async (req, res, next) => {
   const credentials = auth(req);
   console.log(credentials);
+  let message;
+  console.log(message);
   if (credentials) {
     const user = await User.findAll({
       where: {
         emailAddress: credentials.name
       }
     });
-   await console.log(user);
+   //await console.log(user[0].dataValues.password);
     if (user) {
       const authenticated = bcryptjs
-        .compareSync(credentials.pass, user.password);
+        .compareSync(credentials.pass, user[0].dataValues.password);
       if (authenticated) {
         req.currentUser = user;
       } else {
-        message = `Authentication failure for username: ${user.username}`;
-    } 
-  } else {
-    message = 'Auth header not found';
+       message = `Authentication failure for username: ${user.username}`;
+      } 
+    } else {
+      message = 'Auth header not found';
+    }
   }
-  }
-  if (message) {
-    console.warn(message);
+  if (message !== undefined) {
+    console.log(message);
 
     // Return a response with a 401 Unauthorized HTTP status code.
     res.status(401).json({ message: 'Access Denied' });
-  } else {
-  next();
-  }
+  } //else {
+    next();
+ // }
 };
 
 // setup a friendly greeting for the root route
@@ -74,40 +76,66 @@ app.get('/', (req, res) => {
   });
 });
 
+//* USER ROUTES *//
+
 //get route to get the current user
 app.get('/api/users', authenticateUser, async (req, res) => {
   const user = await req.currentUser;
-  //console.log(user);
+  console.log(user);
   res.json({
-    name: user.name,
-    username: user.username,
+    name: user[0].dataValues.firstName + ' ' + user[0].dataValues.lastName,
+    email: user[0].dataValues.emailAddress,
   });
 })
-
-// app.get('/api/users', async (req, res) => {
-//   console.log(req.body)
-
-//   //console.log(user);
-//   // res.json({
-//   //   email: user.name,
-//   //   name: user.username
-//   // });
-// })
 
 //post route to create a user
 //urlencondedParser is from stackoverflow: https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
 app.post('/api/users', urlencodedParser, async (req, res) => {
   await console.log(req.body);
+  let user = req.body;
   //let newUser; 
+  user.password = bcryptjs.hashSync(user.password);
   try {
     //console.log(req.body);
-    await User.create(req.body);
+    await User.create(user);
     res.status(201).end();
   } catch (error) {
+      if(error.name === "SequelizeValidationError") {
+        res.status(400).send(error);
+      } else {
       throw error;
+      }
      }  
   }
 );
+
+//* COURSE ROUTES *//
+
+//get route to retrieve courses: /api/courses
+app.get('/api/courses', async (req, res) => {
+  let courses = await Course.findAll();
+  console.log(courses);
+  res.json({
+    courses
+  });
+})
+
+//get route to retrieve a specific course, based on the course id: /api/courses/:id
+app.get('/api/courses/:id', async (req, res) => {
+  let course = await Course.findByPk(req.params.id);
+  console.log(course);
+  res.json({
+    course
+  });
+})
+
+//post route to create a new course, set the location header for the new course, returns no content: /api/courses 
+
+//put route to update a course: /api/courses/:id 
+
+//delete route to delete a course: /api/courses/:id
+
+//* error handling, etc *//
 
 // send 404 if no other route matched
 app.use((req, res) => {
