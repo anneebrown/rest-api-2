@@ -98,14 +98,17 @@ app.post('/api/users', urlencodedParser, async (req, res) => {
   //await console.log(req.body);
   let user = req.body;
   //let newUser; 
-  if(user.password){
-    user.password = bcryptjs.hashSync(user.password);
-  } else {
-    res.json({message: "please provide a password"});
-    res.status(400).end();
-  }
+  // if(user.password){
+  //   user.password = bcryptjs.hashSync(user.password);
+  // } else {
+  //   res.json({message: "please provide a password"});
+  //   res.status(400).end();
+  // }
   try {
     //console.log(req.body);
+    if(user.password){
+      user.password = bcryptjs.hashSync(user.password);
+    }
     await User.create(user);
     res.location('/');
     res.status(201).end();
