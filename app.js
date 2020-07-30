@@ -37,17 +37,17 @@ app.use(jsonParser);
 //set up authentication middleware 
 const authenticateUser = async (req, res, next) => {
   const credentials = auth(req);
-  console.log(credentials);
+  //console.log(credentials);
   let message;
-  console.log(message);
+  //console.log(message);
   if (credentials) {
     const user = await User.findAll({
       where: {
         emailAddress: credentials.name
       }
     });
-   //await console.log(user[0].dataValues.password);
-    if (user) {
+    //console.log(user);
+    if (user.length > 0) {
       const authenticated = bcryptjs
         .compareSync(credentials.pass, user[0].dataValues.password);
       if (authenticated) {
@@ -60,7 +60,7 @@ const authenticateUser = async (req, res, next) => {
     }
   }
   if (message !== undefined) {
-    console.log(message);
+    //console.log(message);
 
     // Return a response with a 401 Unauthorized HTTP status code.
     res.status(401).json({ message: 'Access Denied' });
@@ -81,20 +81,26 @@ app.get('/', (req, res) => {
 //get route to get the current user
 app.get('/api/users', authenticateUser, async (req, res) => {
   const user = await req.currentUser;
-  console.log(user);
+  //console.log(user);
   res.json({
-    name: user[0].dataValues.firstName + ' ' + user[0].dataValues.lastName,
-    email: user[0].dataValues.emailAddress,
+    // name: user[0].dataValues.firstName + ' ' + user[0].dataValues.lastName,
+    // email: user[0].dataValues.emailAddress,
+    user
   });
 })
 
 //post route to create a user
 //urlencondedParser is from stackoverflow: https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
 app.post('/api/users', urlencodedParser, async (req, res) => {
-  await console.log(req.body);
+  //await console.log(req.body);
   let user = req.body;
   //let newUser; 
-  user.password = bcryptjs.hashSync(user.password);
+  if(user.password){
+    user.password = bcryptjs.hashSync(user.password);
+  } else {
+    res.json({message: "please provide a password"});
+    res.status(400).end();
+  }
   try {
     //console.log(req.body);
     await User.create(user);
@@ -115,7 +121,7 @@ app.post('/api/users', urlencodedParser, async (req, res) => {
 //get route to retrieve courses: /api/courses
 app.get('/api/courses', async (req, res) => {
   let courses = await Course.findAll();
-  console.log(courses);
+  //console.log(courses);
   res.json({
     courses
   });
@@ -126,8 +132,9 @@ app.get('/api/courses', async (req, res) => {
 app.get('/api/courses/:id', async (req, res) => {
   let course = await Course.findByPk(req.params.id);
   if(course){
+    let user = await User.findByPk(course.dataValues.userId);
     res.json({
-      course
+      course, user
     });
     res.status(200).end();
   } else {
@@ -163,50 +170,64 @@ app.post('/api/courses', authenticateUser, async (req, res) => {
 app.put('/api/courses/:id', authenticateUser, async (req, res) => {
   let course;
   let user = await req.currentUser; 
-  if (user[0].dataValues.id === req.body.userId) {
-    try {
-      course = await Course.findByPk(req.params.id);
-      if(course) {
-        course = course.update(req.body);
-        res.status(204).end();
+  try {
+    course = await Course.findByPk(req.params.id);
+    //console.log(course.dataValues);
+    if(course) {
+      if(user) {
+        if (user[0].dataValues.id === course.dataValues.userId) {
+          course = course.update(req.body);
+          res.status(204).end();
+        } else {
+          res.status(401).end();
+        } 
       } else {
-        res.status(404);
-      }
-    } catch (error) {
-      if(error.name === "SequelizeValidationError") {
-        res.status(400).send(error);
-      } else {
-        throw error;
-      }
+        //res.status(404);
+        console.log('user not authenticated');
+        res.status(401).end();
+    }} else {
+      res.status(404).end();
     }
-  } else {
-    res.status(401).end();
+
+  } catch (error) {
+    if(error.name === "SequelizeValidationError") {
+      res.status(400).send(error);
+    } else {
+      throw error;
+    }
   }
-});
+  });
 
 //delete route to delete a course: /api/courses/:id
 app.delete('/api/courses/:id', authenticateUser, async (req, res) => {
   let course;
   let user = await req.currentUser; 
-  if (user[0].dataValues.id === req.body.userId) {
-    try {
-      course = await Course.findByPk(req.params.id);
-      if(course) {
-        course = course.destroy(req.body);
-        res.status(204).end();
+  try {
+    course = await Course.findByPk(req.params.id);
+    //console.log(course.dataValues);
+    if(course) {
+      if(user) {
+        if (user[0].dataValues.id === course.dataValues.userId) {
+          course = course.destroy(req.body);
+          res.status(204).end();
+        } else {
+          res.status(401).end();
+        } 
       } else {
-        res.status(404);
-      }
-    } catch (error) {
-      if(error.name === "SequelizeValidationError") {
-        res.status(400).send(error);
-      } else {
-        throw error;
-      }
+        //res.status(404);
+        console.log('user not authenticated');
+        res.status(401).end();
+    }} else {
+      res.status(404).end();
     }
-  } else {
-    res.status(401).end();
-  } 
+
+  } catch (error) {
+    if(error.name === "SequelizeValidationError") {
+      res.status(400).send(error);
+    } else {
+      throw error;
+    }
+  }
 });
 
 //* error handling, etc *//
