@@ -148,22 +148,26 @@ app.post('/api/courses', authenticateUser, async (req, res) => {
   let user = await req.currentUser; 
   //console.log(user[0].dataValues.id );
   //console.log(req.body.userId);
-  if (user[0].dataValues.id === req.body.userId) {
-    try {
-      course = await Course.create(req.body);
-      //console.log(req.body);
-      res.location('/api/courses/' + course.id);
-      res.status(201).end();
-    } catch (error) {
-      if(error.name === "SequelizeValidationError") {
-        res.status(400).send(error);
-      } else {
-        throw error;
+  if (user) {
+    if (user[0].dataValues.id === req.body.userId) {
+      try {
+        course = await Course.create(req.body);
+        //console.log(req.body);
+        res.location('/api/courses/' + course.id);
+        res.status(201).end();
+      } catch (error) {
+        if(error.name === "SequelizeValidationError") {
+          res.status(400).send(error);
+        } else {
+          throw error;
+        }
       }
+    } else {
+      res.status(401).end();
     }
- } else {
-   res.status(401).end();
- }
+  } else {
+    res.status(401).end();
+  }
 });
 
 //put route to update a course: /api/courses/:id 
