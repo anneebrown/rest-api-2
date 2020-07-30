@@ -82,11 +82,14 @@ app.get('/', (req, res) => {
 app.get('/api/users', authenticateUser, async (req, res) => {
   const user = await req.currentUser;
   //console.log(user);
-  res.json({
-    // name: user[0].dataValues.firstName + ' ' + user[0].dataValues.lastName,
-    // email: user[0].dataValues.emailAddress,
-    user
-  });
+  if(user) {
+    res.json({
+      user
+    });
+    res.status(200).end();
+  } else {
+    res.status(401).end();
+  }
 })
 
 //post route to create a user
