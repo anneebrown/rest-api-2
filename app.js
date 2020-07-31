@@ -7,6 +7,7 @@ const models = require('./models');
 const {User, Course} = models;
 const auth = require('basic-auth');
 const bcryptjs = require('bcryptjs');
+const { body, validationResult } = require('express-validator');
 
 //FROM STACKOVERFLOW https://stackoverflow.com/questions/9177049/express-js-req-body-undefined
 var bodyParser = require('body-parser')
@@ -97,13 +98,6 @@ app.get('/api/users', authenticateUser, async (req, res) => {
 app.post('/api/users', urlencodedParser, async (req, res) => {
   //await console.log(req.body);
   let user = req.body;
-  //let newUser; 
-  // if(user.password){
-  //   user.password = bcryptjs.hashSync(user.password);
-  // } else {
-  //   res.json({message: "please provide a password"});
-  //   res.status(400).end();
-  // }
   try {
     //console.log(req.body);
     if(user.password){
@@ -113,7 +107,7 @@ app.post('/api/users', urlencodedParser, async (req, res) => {
     res.location('/');
     res.status(201).end();
   } catch (error) {
-      if(error.name === "SequelizeValidationError") {
+      if(error.name === "SequelizeValidationError" || error.name === "SequelizeUniqueConstraintError") {
         res.status(400).send(error);
       } else {
       throw error;
@@ -155,7 +149,7 @@ app.post('/api/courses', authenticateUser, async (req, res) => {
   //console.log(user[0].dataValues.id );
   //console.log(req.body.userId);
   if (user) {
-    if (user[0].dataValues.id === req.body.userId) {
+    //if (user[0].dataValues.id === req.body.userId) {
       try {
         course = await Course.create(req.body);
         //console.log(req.body);
@@ -168,26 +162,38 @@ app.post('/api/courses', authenticateUser, async (req, res) => {
           throw error;
         }
       }
-    } else {
-      res.status(401).end();
-    }
+    // } else {
+    //   res.status(401).end();
+    // }
   } else {
     res.status(401).end();
   }
 });
 
 //put route to update a course: /api/courses/:id 
-app.put('/api/courses/:id', authenticateUser, async (req, res) => {
+app.put('/api/courses/:id', authenticateUser, [  
+  body('id').isLength({min: 1}),
+  body('title').isLength({min: 1}),
+  body('description').isLength({mind: 1}),
+  body('userId').isLength({min: 1})], async (req, res) => {
+  
   let course;
   let user = await req.currentUser; 
+
+  const errors = validationResult(req);
+
   try {
     course = await Course.findByPk(req.params.id);
     //console.log(course.dataValues);
     if(course) {
       if(user) {
+        //this snippet is taken from the express validator docs at https://express-validator.github.io/docs/
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ errors: errors.array() });
+      }
         if (user[0].dataValues.id === course.dataValues.userId) {
-          course = course.update(req.body);
-          res.status(204).end();
+            course = course.update(req.body);
+            res.status(204).end();
         } else {
           res.status(401).end();
         } 
@@ -195,7 +201,8 @@ app.put('/api/courses/:id', authenticateUser, async (req, res) => {
         //res.status(404);
         console.log('user not authenticated');
         res.status(401).end();
-    }} else {
+      }
+    } else {
       res.status(404).end();
     }
 
