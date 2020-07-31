@@ -171,10 +171,9 @@ app.post('/api/courses', authenticateUser, async (req, res) => {
 });
 
 //put route to update a course: /api/courses/:id 
-app.put('/api/courses/:id', authenticateUser, [  
-  body('id').isLength({min: 1}),
+app.put('/api/courses/:id', authenticateUser, [ 
   body('title').isLength({min: 1}),
-  body('description').isLength({mind: 1}),
+  body('description').isLength({min: 1}),
   body('userId').isLength({min: 1})], async (req, res) => {
   
   let course;
