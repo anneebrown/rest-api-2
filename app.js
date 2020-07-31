@@ -198,7 +198,6 @@ app.put('/api/courses/:id', authenticateUser, [
           res.status(401).end();
         } 
       } else {
-        //res.status(404);
         console.log('user not authenticated');
         res.status(401).end();
       }
